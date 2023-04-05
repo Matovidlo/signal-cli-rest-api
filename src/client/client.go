@@ -459,12 +459,12 @@ func (s *SignalClient) send(number string, message string,
 
 func (s *SignalClient) About() About {
 	about := About{
-        SupportedApiVersions: []string{"v1", "v2"},
-        BuildNr: 2,
-        Mode: getSignalCliModeString(s.signalCliMode),
-		Version: utils.GetEnv("BUILD_VERSION", "unset"),
-		Capabilities: map[string][]string{"v2/send": []string{"quotes", "mentions"}},
-    }
+		SupportedApiVersions: []string{"v1", "v2"},
+		BuildNr:              2,
+		Mode:                 getSignalCliModeString(s.signalCliMode),
+		Version:              utils.GetEnv("BUILD_VERSION", "unset"),
+		Capabilities:         map[string][]string{"v2/send": []string{"quotes", "mentions"}},
+	}
 	return about
 }
 
@@ -1457,4 +1457,24 @@ func (s *SignalClient) GetTrustMode(number string) utils.SignalCliTrustMode {
 		return utils.OnFirstUseTrust
 	}
 	return trustMode
+}
+
+func (s *SignalClient) UploadStickerPack(number, path string) (string, error) {
+	var err error
+	var response string
+	if s.signalCliMode == JsonRpc {
+		type Request struct {
+			Path string `json:"path"`
+		}
+		request := Request{Path: path}
+		jsonRpc2Client, err := s.getJsonRpc2Client(number)
+		if err != nil {
+			return "", err
+		}
+		response, err = jsonRpc2Client.getRaw("uploadStickerPack", request)
+	} else {
+		cmd := []string{"--config", s.signalCliConfig, "-a", number, "uploadStickerPack", path}
+		response, err = s.cliClient.Execute(true, cmd, "")
+	}
+	return response, err
 }

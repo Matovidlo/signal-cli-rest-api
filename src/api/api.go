@@ -128,6 +128,11 @@ type TrustIdentityRequest struct {
 	TrustAllKnownKeys    *bool   `json:"trust_all_known_keys" example:"false"`
 }
 
+type UploadStickerPackRequest struct {
+	Number string `json:"number" binding:"required"`
+	Path   string `json:"path" binding:"required"`
+}
+
 type SendMessageResponse struct {
 	Timestamp string `json:"timestamp"`
 }
@@ -149,6 +154,10 @@ var connectionUpgrader = websocket.Upgrader{
 type SearchResponse struct {
 	Number     string `json:"number"`
 	Registered bool   `json:"registered"`
+}
+
+type UploadStickerPackResponse struct {
+	Url string `json:"url"`
 }
 
 type AddDeviceRequest struct {
@@ -1522,4 +1531,31 @@ func (a *Api) GetTrustMode(c *gin.Context) {
 	}
 
 	c.JSON(200, trustMode)
+}
+
+// @Summary Upload sticker pack as manifest with zipped images.
+// @Tags General
+// @Description Upload sticker pack as manifest with zipped images.
+// @Accept multipart/form-data
+// @Produce json
+// @Param manifest path string true "Path to manifest file"
+// @Param zip path string true "Path to zipped stickers"
+// @Success 200
+// @Failure 400 {object} Error
+// @Router /v2/upload-sticker-pack [post]
+func (a *Api) UploadStickerPack(c *gin.Context) {
+	var req UploadStickerPackRequest
+	err := c.Bind(&req)
+	if err != nil {
+		c.JSON(400, Error{Msg: "Couldn't process request - invalid request"})
+		return
+	}
+
+	response, err := a.signalClient.UploadStickerPack(req.Number, req.Path)
+	if err != nil {
+		c.JSON(400, Error{Msg: "Couldn't upload sticker pack - " + err.Error()})
+		return
+	}
+
+	c.JSON(200, UploadStickerPackResponse{Url: response})
 }
